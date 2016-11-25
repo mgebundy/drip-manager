@@ -1,0 +1,38 @@
+{
+  "name": "drip-manager",
+  "version": "0.1.0",
+  "preferGlobal": true,
+  "scripts": {
+    "build": "babel src -d dist"
+  },
+  "babel": {
+    "presets": [
+      "latest"
+    ]
+  },
+  "directories": {
+    "lib": "./dist/lib",
+    "bin": "./dist/bin"
+  },
+  "dependencies": {
+    "chalk": "^1.1.3",
+    "commander": "^2.9.0",
+    "extract-zip": "^1.5.0",
+    "lodash": "^4.6.1",
+    "rc": "^1.1.6",
+    "request": "^2.79.0",
+    "sanitize-filename": "^1.5.3",
+    "tmp": "^0.0.31"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-preset-latest": "^6.16.0",
+    "eslint": "^3.10.2",
+    "eslint-config-standard": "^6.2.1",
+    "eslint-plugin-promise": "^3.4.0",
+    "eslint-plugin-standard": "^2.0.1"
+  },
+  "bin": {
+    "getdrip": "./dist/bin/getdrip.js"
+  }
+}
