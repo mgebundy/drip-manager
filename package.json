@@ -1,6 +1,15 @@
 {
   "name": "drip-manager",
-  "version": "0.1.0",
+  "version": "0.0.1",
+  "description": "Download your Drip releases via command line",
+  "keywords" : ["drip", "drip.fm", "music"],
+  "license" : "MIT",
+  "author" : {
+    "name" : "Mitchell Bundy",
+    "email" : "mitch@bundy.ca",
+    "url" : "http://www.bundy.ca/"
+  },
+  "repository" : "mgebundy/drip-manager",
   "preferGlobal": true,
   "scripts": {
     "build": "babel src -d dist"

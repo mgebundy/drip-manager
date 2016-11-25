@@ -28,6 +28,4 @@ for (let dep of _.keys(checkDependencies)) {
   else appCfg.dependencies[dep] = true;
 }
 
-console.log(appCfg);
-
 export default appCfg;
