@@ -34,14 +34,3 @@ It's simple...
 $ getdrip https://drip.kickstarter.com/ninjatune/releases/jay-daniel-broken-knowz
 ```
 and it will download, extract, cleanup and move according to your parameters.
-
-
-## Known issues
- - Not compatible with Windows because of the use of Unix's `mv`
- - Only the FLAC format really works.
-
-## @TODO
- - Use nicer authentication, not cookies file
- - Template for album folders
- - Get another format, if first one isn't available
- - Label files of other format types properly
