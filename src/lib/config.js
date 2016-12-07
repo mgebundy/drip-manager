@@ -11,7 +11,8 @@ let appCfg = rc('drip-manager', {
   preferredFormats: ['flac', 'wav'],
   templates: {
     track: '${track} ${artist} - ${title}.${format}'
-  }
+  },
+  timeout: 30 * 1000
 }, null);
 
 appCfg.dependencies = {};

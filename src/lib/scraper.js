@@ -61,10 +61,16 @@ class Scraper {
       let tmpobj = tmp.dirSync();
       let filePath = path.resolve(tmpobj.name, fileName);
 
-      doDownload(filePath);
+      console.log(chalk.blue('Getting the zip.'));
+      doDownload(filePath, callback);
     });
 
-    function doDownload (filePath) {
+    function doDownload (filePath, callback, retry = 1000) {
+      if (retry >= appCfg.timeout) {
+        callback(new Error('Download timed out.'), null);
+        return;
+      }
+
       let total = 0;
       let bytes = 0;
 
@@ -81,6 +87,13 @@ class Scraper {
           return;
         }
         total = response.headers['content-length'];
+
+        if (response.headers['content-type'] !== 'application/zip') {
+          setTimeout(() => {
+            doDownload(filePath, callback, retry * 2);
+          }, retry);
+          return;
+        }
 
         response.on('data', data => {
           bytes += data.length;

@@ -69,9 +69,9 @@ var Scraper = function () {
           var _cookie = cookie,
               _cookie2 = _slicedToArray(_cookie, 7),
               domain = _cookie2[0],
-              _path = _cookie2[2],
+              /* flag */_path = _cookie2[2],
               secure = _cookie2[3],
-              name = _cookie2[5],
+              /* expiration */name = _cookie2[5],
               value = _cookie2[6];
 
           domain = domain.replace(/^\./, '');
@@ -133,10 +133,18 @@ var Scraper = function () {
         var tmpobj = _tmp2.default.dirSync();
         var filePath = _path3.default.resolve(tmpobj.name, fileName);
 
-        doDownload(filePath);
+        console.log(_chalk2.default.blue('Getting the zip.'));
+        doDownload(filePath, callback);
       });
 
-      function doDownload(filePath) {
+      function doDownload(filePath, callback) {
+        var retry = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1000;
+
+        if (retry >= _config2.default.timeout) {
+          callback(new Error('Download timed out.'), null);
+          return;
+        }
+
         var total = 0;
         var bytes = 0;
 
@@ -152,6 +160,13 @@ var Scraper = function () {
             return;
           }
           total = response.headers['content-length'];
+
+          if (response.headers['content-type'] !== 'application/zip') {
+            setTimeout(function () {
+              doDownload(filePath, callback, retry * 2);
+            }, retry);
+            return;
+          }
 
           response.on('data', function (data) {
             bytes += data.length;

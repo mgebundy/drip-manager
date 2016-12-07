@@ -28,7 +28,8 @@ var appCfg = (0, _rc2.default)('drip-manager', {
   preferredFormats: ['flac', 'wav'],
   templates: {
     track: '${track} ${artist} - ${title}.${format}'
-  }
+  },
+  timeout: 30 * 1000
 }, null);
 
 appCfg.dependencies = {};

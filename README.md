@@ -39,11 +39,9 @@ and it will download, extract, cleanup and move according to your parameters.
 ## Known issues
  - Not compatible with Windows because of the use of Unix's `mv`
  - Only the FLAC format really works.
- - The request to download the zip fails sometimes because Amazon returns some weird response
 
 ## @TODO
  - Use nicer authentication, not cookies file
  - Template for album folders
- - Retry request until we get it, with timeout
  - Get another format, if first one isn't available
  - Label files of other format types properly
