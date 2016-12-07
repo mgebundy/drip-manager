@@ -65,6 +65,4 @@ try {
   }
 }
 
-console.log(appCfg);
-
 exports.default = appCfg;

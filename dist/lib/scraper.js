@@ -4,6 +4,8 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _fs = require('fs');
@@ -63,15 +65,19 @@ var Scraper = function () {
 
           if (cookie === '' || cookie.indexOf('#') === 0) continue;
           cookie = cookie.split('\t');
-          var domain = cookie[0].replace(/^\./, '');
-          // let flag = cookie[1] === 'TRUE';
-          var _path = cookie[2];
-          var secure = cookie[3] === 'TRUE';
-          // let expiration = cookie[4];
-          var name = cookie[5];
-          var value = cookie[6];
 
-          var _url = (secure ? 'https' : 'http') + ('://' + domain + _path);
+          var _cookie = cookie,
+              _cookie2 = _slicedToArray(_cookie, 7),
+              domain = _cookie2[0],
+              _path = _cookie2[2],
+              secure = _cookie2[3],
+              name = _cookie2[5],
+              value = _cookie2[6];
+
+          domain = domain.replace(/^\./, '');
+          secure = secure === 'TRUE';
+
+          var _url = 'http' + (secure ? 's' : '') + '://' + domain + _path;
           jar.setCookie(_request2.default.cookie(name + '=' + value), _url);
         }
       } catch (err) {

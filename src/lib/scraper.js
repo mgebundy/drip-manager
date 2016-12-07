@@ -16,15 +16,12 @@ class Scraper {
     for (let cookie of cookies.split('\n')) {
       if (cookie === '' || cookie.indexOf('#') === 0) continue;
       cookie = cookie.split('\t');
-      let domain = cookie[0].replace(/^\./, '');
-      // let flag = cookie[1] === 'TRUE';
-      let path = cookie[2];
-      let secure = cookie[3] === 'TRUE';
-      // let expiration = cookie[4];
-      let name = cookie[5];
-      let value = cookie[6];
 
-      let url = (secure ? 'https' : 'http') + `://${domain}${path}`;
+      let [domain, /* flag */, path, secure, /* expiration */, name, value] = cookie;
+      domain = domain.replace(/^\./, '');
+      secure = secure === 'TRUE';
+
+      let url = `http${(secure ? 's' : '')}://${domain}${path}`;
       jar.setCookie(request.cookie(`${name}=${value}`), url);
     }
 
@@ -38,7 +35,7 @@ class Scraper {
     request({
       url: `https://drip.kickstarter.com/api/creatives${reqPath}`,
       jar
-    }).on('data', (data) => {
+    }).on('data', data => {
       callback(JSON.parse(data));
     });
   }
@@ -53,7 +50,7 @@ class Scraper {
       url: reqUrl,
       jar,
       followRedirect: false
-    }).on('response', (response) => {
+    }).on('response', response => {
       if (response.statusCode === 401) {
         callback(new Error('You don\'t have permissions to download this.'), null);
         return;
@@ -78,14 +75,14 @@ class Scraper {
           'User-Agent': `DripManager/${pjson.version}`
         }
       })
-      .on('response', (response) => {
+      .on('response', response => {
         if (response.statusCode === 401) {
           callback(new Error('You don\'t have permissions to download this.'), null);
           return;
         }
         total = response.headers['content-length'];
 
-        response.on('data', (data) => {
+        response.on('data', data => {
           bytes += data.length;
           process.stdout.clearLine();
           process.stdout.write(chalk.blue(`Downloading... ${Math.ceil(bytes / total * 100)}%`));

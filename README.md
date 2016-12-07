@@ -1,5 +1,5 @@
 # Drip Manager
-> Download your Drip.fm releases via a nice command line tool
+> Download your Drip releases via a nice command line tool
 
 ** Does not run 100% on Windows currently **
 
