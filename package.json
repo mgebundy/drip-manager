@@ -1,6 +1,6 @@
 {
   "name": "drip-manager",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Download your Drip releases via command line",
   "keywords" : ["drip", "drip.fm", "music"],
   "license" : "MIT",
