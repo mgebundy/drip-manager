@@ -25,6 +25,10 @@ var _tmp = require('tmp');
 
 var _tmp2 = _interopRequireDefault(_tmp);
 
+var _inquirer = require('inquirer');
+
+var _inquirer2 = _interopRequireDefault(_inquirer);
+
 var _scraper = require('../lib/scraper');
 
 var _scraper2 = _interopRequireDefault(_scraper);
@@ -56,98 +60,106 @@ _commander2.default.version(_package2.default.version).usage('[options] <url,fil
   reqUrl = cmdUrl;
 }).parse(process.argv);
 
-if (typeof reqUrl === 'undefined') {
-  log(error('We need a url or file!'));
-  process.exit(1);
-}
+function getAuthentication() {
+  return new Promise(function (resolve, reject) {
+    if (!_scraper2.default.isAuth()) {
+      log('Let\'s log in to Drip.');
 
-if (['http:', 'https:'].indexOf(_url2.default.parse(reqUrl).protocol) === -1 && _path2.default.extname(reqUrl) === '.zip') {
-  log(_chalk2.default.blue('Already have a zip file. Extracting...'));
-  extractZip(reqUrl);
-} else if (_url2.default.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
-  log(error('This URL isn\'t from drip.kickstarter.com'));
-  process.exit(1);
-} else {
-  _scraper2.default.getDrip(reqUrl, function (response) {
-    var data = response.data;
-    if (!data || !data.id) {
-      log(error('Can\'t find this...'));
-      process.exit(1);
+      _inquirer2.default.prompt([{
+        name: 'email',
+        message: 'Email Address',
+        validate: function validate(input) {
+          var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+          return re.test(input);
+        }
+      }, { name: 'password', message: 'Password', type: 'password' }]).then(function (answers) {
+        _scraper2.default.doAuth(answers).then(resolve).catch(reject);
+      });
+    } else {
+      resolve(true);
     }
-    log(_chalk2.default.blue('Snagging this release by ' + data.artist.trim() + ' for you...'));
-
-    getZip(data.creative_id, data.id);
   });
-}
+};
 
-function getZip(creativeId, id) {
-  _scraper2.default.getDripDownload(creativeId, id, function (err, response) {
-    if (err) {
-      log(error(err.message));
-      process.exit(1);
-    }
-
-    log(_chalk2.default.blue('Got the zip. Extracting...'));
-    extractZip(response);
-  });
-}
-
-function extractZip(zip) {
-  var tmpobj = _tmp2.default.dirSync();
-  var dir = _path2.default.resolve(tmpobj.name, _path2.default.basename(zip, '.zip'));
-  (0, _extractZip2.default)(zip, { dir: dir }, function (err) {
-    if (err) {
-      log(error(err.message));
-      process.exit(1);
-    }
-
-    log(_chalk2.default.green('Downloaded and extracted.'));
-    cleanupDir(dir);
-  });
-}
-
-function cleanupDir(dir) {
-  log(_chalk2.default.blue('Cleaning things up...'));
-
-  var newPath = dir;
-  if (_config2.default.dependencies.avprobe) {
-    newPath = _cleanup2.default.audioFolder(dir);
-  } else {
-    log(_chalk2.default.yellow('Can\'t find avprobe, so no files can be cleaned up.'));
+getAuthentication().then(function (res) {
+  log('Logged In.');
+  if (typeof reqUrl === 'undefined') {
+    log(error('We need a url or file!'));
+    process.exit(1);
   }
-  log(_chalk2.default.green(_path2.default.basename(newPath)));
-
-  var files = _utils2.default.walkDir(newPath);
-  var _iteratorNormalCompletion = true;
-  var _didIteratorError = false;
-  var _iteratorError = undefined;
-
-  try {
-    for (var _iterator = files[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-      var file = _step.value;
-
-      try {
-        var audioFile = _cleanup2.default.audioFile(file);
-        log(_chalk2.default.green(' - ' + _path2.default.basename(audioFile)));
-      } catch (e) {
-        log(_chalk2.default.blue(' - ' + _path2.default.basename(file)));
-      }
-    }
-  } catch (err) {
-    _didIteratorError = true;
-    _iteratorError = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion && _iterator.return) {
-        _iterator.return();
-      }
-    } finally {
-      if (_didIteratorError) {
-        throw _iteratorError;
-      }
-    }
-  }
-
-  _cleanup2.default.addToPath(newPath);
-  log(_chalk2.default.green('Done.'));
-}
+}).catch(function (err) {
+  log(error('Unable to Authenticate.'));
+  log(error(err));
+  process.exit(1);
+});
+//
+// if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
+//   path.extname(reqUrl) === '.zip') {
+//   log(chalk.blue('Already have a zip file. Extracting...'));
+//   extractZip(reqUrl);
+// } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
+//   log(error('This URL isn\'t from drip.kickstarter.com'));
+//   process.exit(1);
+// } else {
+//   Scraper.getDrip(reqUrl, (response) => {
+//     let data = response.data;
+//     if (!data || !data.id) {
+//       log(error('Can\'t find this...'));
+//       process.exit(1);
+//     }
+//     log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
+//
+//     getZip(data.creative_id, data.id);
+//   });
+// }
+//
+// function getZip (creativeId, id) {
+//   Scraper.getDripDownload(creativeId, id, (err, response) => {
+//     if (err) {
+//       log(error(err.message));
+//       process.exit(1);
+//     }
+//
+//     log(chalk.blue('Got the zip. Extracting...'));
+//     extractZip(response);
+//   });
+// }
+//
+// function extractZip (zip) {
+//   let tmpobj = tmp.dirSync();
+//   let dir = path.resolve(tmpobj.name, path.basename(zip, '.zip'));
+//   extract(zip, { dir }, (err) => {
+//     if (err) {
+//       log(error(err.message));
+//       process.exit(1);
+//     }
+//
+//     log(chalk.green('Downloaded and extracted.'));
+//     cleanupDir(dir);
+//   });
+// }
+//
+// function cleanupDir (dir) {
+//   log(chalk.blue('Cleaning things up...'));
+//
+//   let newPath = dir;
+//   if (appCfg.dependencies.avprobe) {
+//     newPath = Cleanup.audioFolder(dir);
+//   } else {
+//     log(chalk.yellow('Can\'t find avprobe, so no files can be cleaned up.'));
+//   }
+//   log(chalk.green(path.basename(newPath)));
+//
+//   let files = Utils.walkDir(newPath);
+//   for (let file of files) {
+//     try {
+//       let audioFile = Cleanup.audioFile(file);
+//       log(chalk.green(` - ${path.basename(audioFile)}`));
+//     } catch (e) {
+//       log(chalk.blue(` - ${path.basename(file)}`));
+//     }
+//   }
+//
+//   Cleanup.addToPath(newPath);
+//   log(chalk.green('Done.'));
+// }

@@ -50,6 +50,43 @@ var Scraper = function () {
   }
 
   _createClass(Scraper, null, [{
+    key: 'isAuth',
+    value: function isAuth() {
+      try {
+        Scraper.getCookieJar();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+  }, {
+    key: 'doAuth',
+    value: function doAuth(_ref) {
+      var email = _ref.email,
+          password = _ref.password;
+
+      return new Promise(function (resolve, reject) {
+        _request2.default.post('https://drip.kickstarter.com/api/users/login', {
+          body: { email: email, password: password },
+          json: true,
+          jar: true
+        }).on('response', function (response) {
+          response.on('data', function (data) {
+            try {
+              data = JSON.parse(data);
+              if (data.errors) {
+                reject(data.errors);
+              }
+            } catch (e) {
+              var cookies = response.headers['set-cookie'];
+              _fs2.default.writeFile(_config2.default.cookieFile, JSON.stringify(cookies));
+              resolve(true);
+            }
+          });
+        });
+      });
+    }
+  }, {
     key: 'getCookieJar',
     value: function getCookieJar() {
       var cookies = _fs2.default.readFileSync(_config2.default.cookieFile).toString();

@@ -9,6 +9,40 @@ import appCfg from './config';
 import pjson from '../../package.json';
 
 class Scraper {
+  static isAuth () {
+    try {
+      Scraper.getCookieJar();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  static doAuth ({email, password}) {
+    return new Promise(
+      function (resolve, reject) {
+        request.post('https://drip.kickstarter.com/api/users/login', {
+          body: {email, password},
+          json: true,
+          jar: true
+        }).on('response', response => {
+          response.on('data', data => {
+            try {
+              data = JSON.parse(data);
+              if (data.errors) {
+                reject(data.errors);
+              }
+            } catch (e) {
+              let cookies = response.headers['set-cookie'];
+              fs.writeFile(appCfg.cookieFile, JSON.stringify(cookies));
+              resolve(true);
+            }
+          });
+        });
+      }
+    );
+  }
+
   static getCookieJar () {
     let cookies = fs.readFileSync(appCfg.cookieFile).toString();
     let jar = request.jar();

@@ -17,7 +17,7 @@ Create a file in your home directory called `.drip-managerrc` to customize other
 
 ```
 musicFolder = ~/Music
-cookieFile  = ~/cookies.txt
+cookieFile  = ~/.config/drip-manager/cookies
 
 ; list of formats, in order of preference.
 ; if one isn't available, we'll download the next

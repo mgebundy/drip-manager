@@ -1,12 +1,33 @@
 import rc from 'rc';
+import fs from 'fs';
 import path from 'path';
 import _ from 'lodash';
 import { spawnSync } from 'child_process';
 
 let userHome = process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
+let configFolder = path.resolve(userHome, '.config', 'drip-manager');
+
+// Ensure config folder exists
+function isDir (dpath) {
+  try {
+    return fs.lstatSync(dpath).isDirectory();
+  } catch (e) {
+    return false;
+  }
+};
+
+function mkdirp (dirname) {
+  dirname = path.normalize(dirname).split(path.sep);
+  dirname.forEach((sdir, index) => {
+    var pathInQuestion = dirname.slice(0, index + 1).join(path.sep);
+    if ((!isDir(pathInQuestion)) && pathInQuestion) fs.mkdirSync(pathInQuestion);
+  });
+};
+
+mkdirp(configFolder);
 
 let appCfg = rc('drip-manager', {
-  cookieFile: path.join(userHome, 'cookies.txt'),
+  cookieFile: path.join(configFolder, 'cookies'),
   musicFolder: path.join(userHome, 'Music'),
   preferredFormats: ['flac', 'wav'],
   templates: {
