@@ -8,7 +8,6 @@ import path from 'path';
 import tmp from 'tmp';
 import inquirer from 'inquirer';
 
-import Scraper from '../lib/scraper';
 import API from '../lib/api';
 import Cleanup from '../lib/cleanup';
 import Utils from '../lib/utils';
@@ -29,7 +28,7 @@ commander
   })
   .parse(process.argv);
 
-function getAuthentication () {
+function Authentication () {
   return new Promise(
     function (resolve, reject) {
       API.getUser().then(() => {
@@ -57,31 +56,28 @@ function getAuthentication () {
 };
 
 function getRelease () {
-  return new Promise(
-    function (resolve, reject) {
-      if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
-        path.extname(reqUrl) === '.zip') {
-        log(chalk.blue('Already have a zip file. Extracting...'));
-        resolve(reqUrl);
-        // extractZip(reqUrl);
-      } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
-        throw new Error('This URL isn\'t from drip.kickstarter.com');
-      } else {
-        let reqPath = url.parse(reqUrl).path;
-        API.get(`/creatives${reqPath}`).then(({data, response}) => {
-          data = data.data;
-          if (!data || !data.id) {
-            throw new Error('Can\'t find this release...');
-          }
-          log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
-          // getZip(data.creative_id, data.id);
-        }, reject);
-      }
-    }
-  );
+  if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
+    path.extname(reqUrl) === '.zip') {
+    log(chalk.blue('Already have a zip file. Extracting...'));
+    return reqUrl;
+    // extractZip(reqUrl);
+  } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
+    throw new Error('This URL isn\'t from drip.kickstarter.com');
+  } else {
+    let reqPath = url.parse(reqUrl).path;
+    return API.get(`/creatives${reqPath}`).then(({data, response}) => {
+      data = data.data;
+      log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
+      return API.getReleaseDownload(data.creative_id, data.id, 'flac', (bytes, total) => {
+        process.stdout.clearLine();
+        process.stdout.write(chalk.blue(`Downloading... ${Math.ceil(bytes / total * 100)}%`));
+        process.stdout.cursorTo(0);
+      }).then(() => { process.stdout.write('\n'); });
+    });
+  }
 }
 
-getAuthentication()
+Authentication()
 .catch(err => {
   log(error('Unable to Authenticate.'));
   log(error(err));

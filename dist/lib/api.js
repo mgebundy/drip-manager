@@ -16,13 +16,25 @@ var _request2 = require('request');
 
 var _request3 = _interopRequireDefault(_request2);
 
+var _url = require('url');
+
+var _url2 = _interopRequireDefault(_url);
+
+var _tmp = require('tmp');
+
+var _tmp2 = _interopRequireDefault(_tmp);
+
+var _path3 = require('path');
+
+var _path4 = _interopRequireDefault(_path3);
+
 var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
 
-var _url = require('url');
+var _package = require('../../package.json');
 
-var _url2 = _interopRequireDefault(_url);
+var _package2 = _interopRequireDefault(_package);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -36,6 +48,20 @@ var API = function () {
   }
 
   _createClass(API, null, [{
+    key: '_options',
+    value: function _options() {
+      var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      options.baseUrl = host;
+      options.headers = {
+        'User-Agent': 'DripManager/' + _package2.default.version
+      };
+
+      options.jar = this.getCookieJar();
+
+      return options;
+    }
+  }, {
     key: '_handleResponse',
     value: function _handleResponse(response, body) {
       if (response.headers['content-type'] === 'application/json') {
@@ -65,7 +91,7 @@ var API = function () {
             body = Buffer.concat(body).toString();
             var data = _this._handleResponse(response, body);
             if (data && data.errors) {
-              reject({ errors: data.errors, response: response });
+              reject(new Error(data.errors.join(',')));
             } else {
               resolve({ data: data, response: response });
             }
@@ -103,13 +129,13 @@ var API = function () {
             var _cookie = cookie,
                 _cookie2 = _slicedToArray(_cookie, 5),
                 keyval = _cookie2[0],
-                path = _cookie2[1],
+                _path = _cookie2[1],
                 /* expiry */secure = _cookie2[3];
 
             secure = secure === 'secure';
-            path = path.split('=');
+            _path = _path.split('=');
             var urlObject = _url2.default.parse(host);
-            var cookieUrl = 'http' + (secure ? 's' : '') + '://' + urlObject.hostname + path[1];
+            var cookieUrl = 'http' + (secure ? 's' : '') + '://' + urlObject.hostname + _path[1];
             jar.setCookie(_request3.default.cookie(keyval), cookieUrl);
           }
         } catch (err) {
@@ -144,7 +170,7 @@ var API = function () {
           var _cookie4 = _cookie3,
               _cookie5 = _slicedToArray(_cookie4, 7),
               domain = _cookie5[0],
-              /* flag */path = _cookie5[2],
+              /* flag */_path2 = _cookie5[2],
               secure = _cookie5[3],
               /* expiration */name = _cookie5[5],
               value = _cookie5[6];
@@ -152,7 +178,7 @@ var API = function () {
           domain = domain.replace(/^\./, '');
           secure = secure === 'TRUE';
 
-          var _cookieUrl = 'http' + (secure ? 's' : '') + '://' + domain + path;
+          var _cookieUrl = 'http' + (secure ? 's' : '') + '://' + domain + _path2;
           jar.setCookie(_request3.default.cookie(name + '=' + value), _cookieUrl);
         }
       } catch (err) {
@@ -177,11 +203,10 @@ var API = function () {
     value: function request(method, path) {
       var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
+      options = this._options(options);
+
       options.method = method.toUpperCase();
       options.url = path;
-      options.baseUrl = host;
-
-      options.jar = this.getCookieJar();
 
       return this._promisify((0, _request3.default)(options));
     }
@@ -227,11 +252,78 @@ var API = function () {
       return this.post('/users/login');
     }
   }, {
-    key: 'getRelease',
-    value: function getRelease(reqUrl, callback) {
-      var reqPath = _url2.default.parse(reqUrl).path;
+    key: 'getReleaseDownloadName',
+    value: function getReleaseDownloadName(creativeId, id, format) {
+      var reqUrl = '/creatives/' + creativeId + '/releases/' + id + '/download?release_format=' + format;
 
-      return this.get('/creatives' + reqPath);
+      return this.get(reqUrl, { followRedirect: false }).then(function (_ref3) {
+        var data = _ref3.data,
+            response = _ref3.response;
+
+        if (response.statusCode === 401) {
+          throw new Error('You don\'t have permissions to download this.');
+        }
+
+        var resUrl = _url2.default.parse(response.headers.location);
+        var fileName = decodeURI(_path4.default.basename(resUrl.pathname));
+
+        return fileName;
+      });
+    }
+  }, {
+    key: 'getReleaseDownload',
+    value: function getReleaseDownload(creativeId, id, format, tick) {
+      var _this2 = this;
+
+      return this.getReleaseDownloadName(creativeId, id, format).then(function (fileName) {
+        return new Promise(function (resolve, reject) {
+          var options = _this2._options();
+          options.url = '/creatives/' + creativeId + '/releases/' + id + '/download?release_format=' + format;
+
+          var tmpobj = _tmp2.default.dirSync();
+          var filePath = _path4.default.resolve(tmpobj.name, fileName);
+
+          doDownload();
+
+          function doDownload() {
+            var retry = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1000;
+
+            if (retry >= _config2.default.timeout) {
+              reject(new Error('Download timed out.'));
+              return;
+            }
+
+            var total = 0;
+            var bytes = 0;
+
+            (0, _request3.default)(options).on('response', function (response) {
+              if (response.statusCode === 401) {
+                reject(new Error('You don\'t have permissions to download this.'));
+                return;
+              }
+              total = response.headers['content-length'];
+
+              if (response.headers['content-type'] !== 'application/zip') {
+                setTimeout(function () {
+                  doDownload(retry * 2);
+                }, retry);
+                return;
+              }
+
+              response.on('data', function (data) {
+                bytes += data.length;
+                tick(bytes, total);
+              });
+
+              response.pipe(_fs2.default.createWriteStream(filePath));
+
+              response.on('end', function () {
+                resolve(filePath);
+              });
+            });
+          }
+        });
+      });
     }
   }]);
 

@@ -1,11 +1,26 @@
 import fs from 'fs';
 import request from 'request';
-import appCfg from './config';
 import url from 'url';
+import tmp from 'tmp';
+import path from 'path';
+
+import appCfg from './config';
+import pjson from '../../package.json';
 
 const host = 'https://drip.kickstarter.com/api';
 
 class API {
+  static _options (options = {}) {
+    options.baseUrl = host;
+    options.headers = {
+      'User-Agent': `DripManager/${pjson.version}`
+    };
+
+    options.jar = this.getCookieJar();
+
+    return options;
+  }
+
   static _handleResponse (response, body) {
     if (response.headers['content-type'] === 'application/json') {
       return JSON.parse(body);
@@ -34,7 +49,7 @@ class API {
             body = Buffer.concat(body).toString();
             let data = this._handleResponse(response, body);
             if (data && data.errors) {
-              reject({errors: data.errors, response});
+              reject(new Error(data.errors.join(',')));
             } else {
               resolve({data, response});
             }
@@ -86,11 +101,10 @@ class API {
   }
 
   static request (method, path, options = {}) {
+    options = this._options(options);
+
     options.method = method.toUpperCase();
     options.url = path;
-    options.baseUrl = host;
-
-    options.jar = this.getCookieJar();
 
     return this._promisify(request(options));
   }
@@ -121,10 +135,75 @@ class API {
     return this.post('/users/login');
   }
 
-  static getRelease (reqUrl, callback) {
-    let reqPath = url.parse(reqUrl).path;
+  static getReleaseDownloadName (creativeId, id, format) {
+    let reqUrl = `/creatives/${creativeId}/releases/${id}/download?release_format=${format}`;
 
-    return this.get(`/creatives${reqPath}`);
+    return this.get(reqUrl, { followRedirect: false })
+    .then(({data, response}) => {
+      if (response.statusCode === 401) {
+        throw new Error('You don\'t have permissions to download this.');
+      }
+
+      let resUrl = url.parse(response.headers.location);
+      let fileName = decodeURI(path.basename(resUrl.pathname));
+
+      return fileName;
+    });
+  }
+
+  static getReleaseDownload (creativeId, id, format, tick) {
+    return this
+    .getReleaseDownloadName(creativeId, id, format)
+    .then(fileName => {
+      return new Promise(
+        (resolve, reject) => {
+          let options = this._options();
+          options.url = `/creatives/${creativeId}/releases/${id}/download?release_format=${format}`;
+
+          let tmpobj = tmp.dirSync();
+          let filePath = path.resolve(tmpobj.name, fileName);
+
+          doDownload();
+
+          function doDownload (retry = 1000) {
+            if (retry >= appCfg.timeout) {
+              reject(new Error('Download timed out.'));
+              return;
+            }
+
+            let total = 0;
+            let bytes = 0;
+
+            request(options)
+            .on('response', response => {
+              if (response.statusCode === 401) {
+                reject(new Error('You don\'t have permissions to download this.'));
+                return;
+              }
+              total = response.headers['content-length'];
+
+              if (response.headers['content-type'] !== 'application/zip') {
+                setTimeout(() => {
+                  doDownload(retry * 2);
+                }, retry);
+                return;
+              }
+
+              response.on('data', data => {
+                bytes += data.length;
+                tick(bytes, total);
+              });
+
+              response.pipe(fs.createWriteStream(filePath));
+
+              response.on('end', () => {
+                resolve(filePath);
+              });
+            });
+          }
+        }
+      );
+    });
   }
 };
 

@@ -64,7 +64,7 @@ _commander2.default.version(_package2.default.version).usage('[options] <url,fil
   reqUrl = cmdUrl;
 }).parse(process.argv);
 
-function getAuthentication() {
+function Authentication() {
   return new Promise(function (resolve, reject) {
     _api2.default.getUser().then(function () {
       resolve(true);
@@ -84,31 +84,32 @@ function getAuthentication() {
 };
 
 function getRelease() {
-  return new Promise(function (resolve, reject) {
-    if (['http:', 'https:'].indexOf(_url2.default.parse(reqUrl).protocol) === -1 && _path2.default.extname(reqUrl) === '.zip') {
-      log(_chalk2.default.blue('Already have a zip file. Extracting...'));
-      resolve(reqUrl);
-      // extractZip(reqUrl);
-    } else if (_url2.default.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
-      throw new Error('This URL isn\'t from drip.kickstarter.com');
-    } else {
-      var reqPath = _url2.default.parse(reqUrl).path;
-      _api2.default.get('/creatives' + reqPath).then(function (_ref) {
-        var data = _ref.data,
-            response = _ref.response;
+  if (['http:', 'https:'].indexOf(_url2.default.parse(reqUrl).protocol) === -1 && _path2.default.extname(reqUrl) === '.zip') {
+    log(_chalk2.default.blue('Already have a zip file. Extracting...'));
+    return reqUrl;
+    // extractZip(reqUrl);
+  } else if (_url2.default.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
+    throw new Error('This URL isn\'t from drip.kickstarter.com');
+  } else {
+    var reqPath = _url2.default.parse(reqUrl).path;
+    return _api2.default.get('/creatives' + reqPath).then(function (_ref) {
+      var data = _ref.data,
+          response = _ref.response;
 
-        data = data.data;
-        if (!data || !data.id) {
-          throw new Error('Can\'t find this release...');
-        }
-        log(_chalk2.default.blue('Snagging this release by ' + data.artist.trim() + ' for you...'));
-        // getZip(data.creative_id, data.id);
-      }, reject);
-    }
-  });
+      data = data.data;
+      log(_chalk2.default.blue('Snagging this release by ' + data.artist.trim() + ' for you...'));
+      return _api2.default.getReleaseDownload(data.creative_id, data.id, 'flac', function (bytes, total) {
+        process.stdout.clearLine();
+        process.stdout.write(_chalk2.default.blue('Downloading... ' + Math.ceil(bytes / total * 100) + '%'));
+        process.stdout.cursorTo(0);
+      }).then(function () {
+        process.stdout.write('\n');
+      });
+    });
+  }
 }
 
-getAuthentication().catch(function (err) {
+Authentication().catch(function (err) {
   log(error('Unable to Authenticate.'));
   log(error(err));
   process.exit(1);
