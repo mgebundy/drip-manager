@@ -40,11 +40,17 @@ class API {
         .on('response', response => {
           let body = [];
           let bytes = 0;
+          let total = response.headers['content-length'];
+
+          // if (response.statusCode >= 400 && response.statusCode < 500) {
+          //   reject(new Error(response.headers.status));
+          //   return;
+          // }
 
           response.on('data', chunk => {
             if (tick) {
               bytes += chunk.length;
-              tick(bytes);
+              tick(bytes, total);
             }
             body.push(chunk);
           });
@@ -53,9 +59,9 @@ class API {
             body = Buffer.concat(body).toString();
             let data = this._handleResponse(response, body);
             if (data && data.errors) {
-              reject(new Error(data.errors.join(',')));
+              reject(new Error(data.errors.join(', ')));
             } else {
-              resolve({data, response});
+              resolve({ data, response });
             }
           });
         });
@@ -126,8 +132,9 @@ class API {
     return this.request('GET', path, options);
   }
 
-  static doAuth ({email, password}) {
-    return API.post('/users/login', { email, password }).then(({data, response}) => {
+  static doAuth ({ email, password }) {
+    return API.post('/users/login', { email, password })
+    .then(({ data, response }) => {
       if (data && data.email === email) {
         let cookies = response.headers['set-cookie'];
         fs.writeFileSync(appCfg.cookieFile, JSON.stringify(cookies));
@@ -142,8 +149,9 @@ class API {
   static getReleaseDownloadName (creativeId, id, format) {
     let reqUrl = `/creatives/${creativeId}/releases/${id}/download?release_format=${format}`;
 
-    return this.get(reqUrl, { followRedirect: false })
-    .then(({data, response}) => {
+    return this
+    .get(reqUrl, { followRedirect: false })
+    .then(({ data, response }) => {
       if (response.statusCode === 401) {
         throw new Error('You don\'t have permissions to download this.');
       }
@@ -193,10 +201,12 @@ class API {
                 return;
               }
 
-              response.on('data', data => {
-                bytes += data.length;
-                tick(bytes, total);
-              });
+              if (tick) {
+                response.on('data', data => {
+                  bytes += data.length;
+                  tick(bytes, total);
+                });
+              }
 
               response.pipe(fs.createWriteStream(filePath));
 

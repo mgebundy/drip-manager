@@ -65,7 +65,7 @@ function getRelease () {
     throw new Error('This URL isn\'t from drip.kickstarter.com');
   } else {
     let reqPath = url.parse(reqUrl).path;
-    return API.get(`/creatives${reqPath}`).then(({data, response}) => {
+    return API.get(`/creatives${reqPath}`).then(({ data, response }) => {
       data = data.data;
       log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
       let format = appCfg.preferredFormats[0];

@@ -178,28 +178,3 @@ Authentication().then(getRelease).then(extractZip).then(cleanupDir).then(_cleanu
   log(error(err.message));
   process.exit(1);
 });
-
-// function cleanupDir (dir) {
-//   log(chalk.blue('Cleaning things up...'));
-//
-//   let newPath = dir;
-//   if (appCfg.dependencies.avprobe) {
-//     newPath = Cleanup.audioFolder(dir);
-//   } else {
-//     log(chalk.yellow('Can\'t find avprobe, so no files can be cleaned up.'));
-//   }
-//   log(chalk.green(path.basename(newPath)));
-//
-//   let files = Utils.walkDir(newPath);
-//   for (let file of files) {
-//     try {
-//       let audioFile = Cleanup.audioFile(file);
-//       log(chalk.green(` - ${path.basename(audioFile)}`));
-//     } catch (e) {
-//       log(chalk.blue(` - ${path.basename(file)}`));
-//     }
-//   }
-//
-//   Cleanup.addToPath(newPath);
-//   log(chalk.green('Done.'));
-// }

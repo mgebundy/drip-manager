@@ -11,13 +11,10 @@ It depends on `avprobe` to really reach its full potential. Download `libav` [he
 Also optionally `metaflac` to get certain flac file metadata.
 
 ## Configuration
-We need your cookies or it won't work. Put a file named `cookies.txt` in your home directory with Netscape-style cookies from your `drip.kickstarter.com`
-
-Create a file in your home directory called `.drip-managerrc` to customize other options such as the folder your music syncs to. Here are the defaults...
+In your home directory create a `config` file in `.config/drip-manager`, this is to customize other options such as the folder your music syncs to. Here are the defaults...
 
 ```
 musicFolder = ~/Music
-cookieFile  = ~/.config/drip-manager/cookies
 
 ; list of formats, in order of preference.
 ; if one isn't available, we'll download the next
@@ -26,6 +23,10 @@ preferredFormats[] = wav
 
 [templates]
 track = '${track} ${artist} - ${title}.${format}'
+
+; if the cli login isn't for you, go ahead and
+; put your Netscape-style cookies in this file...
+cookieFile  = ~/.config/drip-manager/cookies
 ```
 
 ## Usage
@@ -33,4 +34,4 @@ It's simple...
 ```console
 $ getdrip https://drip.kickstarter.com/ninjatune/releases/jay-daniel-broken-knowz
 ```
-and it will download, extract, cleanup and move according to your parameters.
+If it's your first time running the command, it will ask you to log in with your Drip credentials. Every other time (until your session expires) it will download, extract, cleanup and move a release according to your parameters.

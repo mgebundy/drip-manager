@@ -82,11 +82,17 @@ var API = function () {
         request.on('error', reject).on('response', function (response) {
           var body = [];
           var bytes = 0;
+          var total = response.headers['content-length'];
+
+          // if (response.statusCode >= 400 && response.statusCode < 500) {
+          //   reject(new Error(response.headers.status));
+          //   return;
+          // }
 
           response.on('data', function (chunk) {
             if (tick) {
               bytes += chunk.length;
-              tick(bytes);
+              tick(bytes, total);
             }
             body.push(chunk);
           });
@@ -95,7 +101,7 @@ var API = function () {
             body = Buffer.concat(body).toString();
             var data = _this._handleResponse(response, body);
             if (data && data.errors) {
-              reject(new Error(data.errors.join(',')));
+              reject(new Error(data.errors.join(', ')));
             } else {
               resolve({ data: data, response: response });
             }
@@ -314,10 +320,12 @@ var API = function () {
                 return;
               }
 
-              response.on('data', function (data) {
-                bytes += data.length;
-                tick(bytes, total);
-              });
+              if (tick) {
+                response.on('data', function (data) {
+                  bytes += data.length;
+                  tick(bytes, total);
+                });
+              }
 
               response.pipe(_fs2.default.createWriteStream(filePath));
 
