@@ -33,6 +33,10 @@ var _scraper = require('../lib/scraper');
 
 var _scraper2 = _interopRequireDefault(_scraper);
 
+var _api = require('../lib/api');
+
+var _api2 = _interopRequireDefault(_api);
+
 var _cleanup = require('../lib/cleanup');
 
 var _cleanup2 = _interopRequireDefault(_cleanup);
@@ -62,7 +66,9 @@ _commander2.default.version(_package2.default.version).usage('[options] <url,fil
 
 function getAuthentication() {
   return new Promise(function (resolve, reject) {
-    if (!_scraper2.default.isAuth()) {
+    _api2.default.getUser().then(function () {
+      resolve(true);
+    }, function () {
       log('Let\'s log in to Drip.');
 
       _inquirer2.default.prompt([{
@@ -72,47 +78,51 @@ function getAuthentication() {
           var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
           return re.test(input);
         }
-      }, { name: 'password', message: 'Password', type: 'password' }]).then(function (answers) {
-        _scraper2.default.doAuth(answers).then(resolve).catch(reject);
-      });
-    } else {
-      resolve(true);
-    }
+      }, { name: 'password', message: 'Password', type: 'password' }]).then(_api2.default.doAuth).then(resolve, reject);
+    });
   });
 };
 
-getAuthentication().then(function (res) {
-  log('Logged In.');
-  if (typeof reqUrl === 'undefined') {
-    log(error('We need a url or file!'));
-    process.exit(1);
-  }
-}).catch(function (err) {
+function getRelease() {
+  return new Promise(function (resolve, reject) {
+    if (['http:', 'https:'].indexOf(_url2.default.parse(reqUrl).protocol) === -1 && _path2.default.extname(reqUrl) === '.zip') {
+      log(_chalk2.default.blue('Already have a zip file. Extracting...'));
+      resolve(reqUrl);
+      // extractZip(reqUrl);
+    } else if (_url2.default.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
+      throw new Error('This URL isn\'t from drip.kickstarter.com');
+    } else {
+      var reqPath = _url2.default.parse(reqUrl).path;
+      _api2.default.get('/creatives' + reqPath).then(function (_ref) {
+        var data = _ref.data,
+            response = _ref.response;
+
+        data = data.data;
+        if (!data || !data.id) {
+          throw new Error('Can\'t find this release...');
+        }
+        log(_chalk2.default.blue('Snagging this release by ' + data.artist.trim() + ' for you...'));
+        // getZip(data.creative_id, data.id);
+      }, reject);
+    }
+  });
+}
+
+getAuthentication().catch(function (err) {
   log(error('Unable to Authenticate.'));
   log(error(err));
   process.exit(1);
+}).then(function (res) {
+  if (typeof reqUrl === 'undefined') {
+    throw new Error('We need a url or file!');
+  }
+}).then(getRelease)
+// .then(extractZip)
+.catch(function (err) {
+  log(error(err.message));
+  process.exit(1);
 });
-//
-// if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
-//   path.extname(reqUrl) === '.zip') {
-//   log(chalk.blue('Already have a zip file. Extracting...'));
-//   extractZip(reqUrl);
-// } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
-//   log(error('This URL isn\'t from drip.kickstarter.com'));
-//   process.exit(1);
-// } else {
-//   Scraper.getDrip(reqUrl, (response) => {
-//     let data = response.data;
-//     if (!data || !data.id) {
-//       log(error('Can\'t find this...'));
-//       process.exit(1);
-//     }
-//     log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
-//
-//     getZip(data.creative_id, data.id);
-//   });
-// }
-//
+
 // function getZip (creativeId, id) {
 //   Scraper.getDripDownload(creativeId, id, (err, response) => {
 //     if (err) {

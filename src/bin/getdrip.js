@@ -9,6 +9,7 @@ import tmp from 'tmp';
 import inquirer from 'inquirer';
 
 import Scraper from '../lib/scraper';
+import API from '../lib/api';
 import Cleanup from '../lib/cleanup';
 import Utils from '../lib/utils';
 import appCfg from '../lib/config';
@@ -31,7 +32,9 @@ commander
 function getAuthentication () {
   return new Promise(
     function (resolve, reject) {
-      if (!Scraper.isAuth()) {
+      API.getUser().then(() => {
+        resolve(true);
+      }, () => {
         log('Let\'s log in to Drip.');
 
         inquirer
@@ -45,48 +48,57 @@ function getAuthentication () {
             }
           },
           { name: 'password', message: 'Password', type: 'password' }
-        ]).then(answers => {
-          Scraper.doAuth(answers).then(resolve).catch(reject);
-        });
-      } else {
-        resolve(true);
-      }
+        ])
+        .then(API.doAuth)
+        .then(resolve, reject);
+      });
     }
   );
 };
 
-getAuthentication().then(res => {
-  log('Logged In.');
-  if (typeof reqUrl === 'undefined') {
-    log(error('We need a url or file!'));
-    process.exit(1);
-  }
-}).catch(err => {
+function getRelease () {
+  return new Promise(
+    function (resolve, reject) {
+      if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
+        path.extname(reqUrl) === '.zip') {
+        log(chalk.blue('Already have a zip file. Extracting...'));
+        resolve(reqUrl);
+        // extractZip(reqUrl);
+      } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
+        throw new Error('This URL isn\'t from drip.kickstarter.com');
+      } else {
+        let reqPath = url.parse(reqUrl).path;
+        API.get(`/creatives${reqPath}`).then(({data, response}) => {
+          data = data.data;
+          if (!data || !data.id) {
+            throw new Error('Can\'t find this release...');
+          }
+          log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
+          // getZip(data.creative_id, data.id);
+        }, reject);
+      }
+    }
+  );
+}
+
+getAuthentication()
+.catch(err => {
   log(error('Unable to Authenticate.'));
   log(error(err));
   process.exit(1);
+})
+.then(res => {
+  if (typeof reqUrl === 'undefined') {
+    throw new Error('We need a url or file!');
+  }
+})
+.then(getRelease)
+// .then(extractZip)
+.catch(err => {
+  log(error(err.message));
+  process.exit(1);
 });
-//
-// if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
-//   path.extname(reqUrl) === '.zip') {
-//   log(chalk.blue('Already have a zip file. Extracting...'));
-//   extractZip(reqUrl);
-// } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
-//   log(error('This URL isn\'t from drip.kickstarter.com'));
-//   process.exit(1);
-// } else {
-//   Scraper.getDrip(reqUrl, (response) => {
-//     let data = response.data;
-//     if (!data || !data.id) {
-//       log(error('Can\'t find this...'));
-//       process.exit(1);
-//     }
-//     log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
-//
-//     getZip(data.creative_id, data.id);
-//   });
-// }
-//
+
 // function getZip (creativeId, id) {
 //   Scraper.getDripDownload(creativeId, id, (err, response) => {
 //     if (err) {

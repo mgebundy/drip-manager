@@ -5,65 +5,14 @@ import url from 'url';
 import chalk from 'chalk';
 import tmp from 'tmp';
 
+import API from './api';
+
 import appCfg from './config';
 import pjson from '../../package.json';
 
 class Scraper {
-  static isAuth () {
-    try {
-      Scraper.getCookieJar();
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  static doAuth ({email, password}) {
-    return new Promise(
-      function (resolve, reject) {
-        request.post('https://drip.kickstarter.com/api/users/login', {
-          body: {email, password},
-          json: true,
-          jar: true
-        }).on('response', response => {
-          response.on('data', data => {
-            try {
-              data = JSON.parse(data);
-              if (data.errors) {
-                reject(data.errors);
-              }
-            } catch (e) {
-              let cookies = response.headers['set-cookie'];
-              fs.writeFile(appCfg.cookieFile, JSON.stringify(cookies));
-              resolve(true);
-            }
-          });
-        });
-      }
-    );
-  }
-
-  static getCookieJar () {
-    let cookies = fs.readFileSync(appCfg.cookieFile).toString();
-    let jar = request.jar();
-
-    for (let cookie of cookies.split('\n')) {
-      if (cookie === '' || cookie.indexOf('#') === 0) continue;
-      cookie = cookie.split('\t');
-
-      let [domain, /* flag */, path, secure, /* expiration */, name, value] = cookie;
-      domain = domain.replace(/^\./, '');
-      secure = secure === 'TRUE';
-
-      let url = `http${(secure ? 's' : '')}://${domain}${path}`;
-      jar.setCookie(request.cookie(`${name}=${value}`), url);
-    }
-
-    return jar;
-  }
-
   static getDrip (reqUrl, callback) {
-    let jar = this.getCookieJar();
+    let jar = API.getCookieJar();
     let reqPath = url.parse(reqUrl).path;
 
     request({
@@ -75,7 +24,7 @@ class Scraper {
   }
 
   static getDripDownload (creativeId, id, callback) {
-    let jar = this.getCookieJar();
+    let jar = API.getCookieJar();
     let format = appCfg.preferredFormats[0];
 
     let reqUrl = `https://drip.kickstarter.com/api/creatives/${creativeId}/releases/${id}/download?release_format=${format}`;
