@@ -122,30 +122,63 @@ function extractZip(zip) {
       }
 
       log(_chalk2.default.green('Extracted.'));
-      // cleanupDir(dir);
+      resolve(dir);
     });
   });
 }
 
-Authentication().then(getRelease).then(extractZip).catch(function (err) {
+function cleanupDir(dir) {
+  log(_chalk2.default.blue('Cleaning things up...'));
+
+  var newPath = dir;
+  if (_config2.default.dependencies.avprobe) {
+    newPath = _cleanup2.default.audioFolder(dir);
+  } else {
+    log(_chalk2.default.yellow('Can\'t find avprobe, so no files can be cleaned up.'));
+  }
+  log(_chalk2.default.green(_path2.default.basename(newPath)));
+
+  var files = _utils2.default.walkDir(newPath);
+  var _iteratorNormalCompletion = true;
+  var _didIteratorError = false;
+  var _iteratorError = undefined;
+
+  try {
+    for (var _iterator = files[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      var file = _step.value;
+
+      try {
+        var audioFile = _cleanup2.default.audioFile(file);
+        log(_chalk2.default.green(' - ' + _path2.default.basename(audioFile)));
+      } catch (e) {
+        log(_chalk2.default.blue(' - ' + _path2.default.basename(file)));
+      }
+    }
+  } catch (err) {
+    _didIteratorError = true;
+    _iteratorError = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion && _iterator.return) {
+        _iterator.return();
+      }
+    } finally {
+      if (_didIteratorError) {
+        throw _iteratorError;
+      }
+    }
+  }
+
+  return newPath;
+}
+
+Authentication().then(getRelease).then(extractZip).then(cleanupDir).then(_cleanup2.default.addToPath).then(function () {
+  log(_chalk2.default.green('Done.'));
+}).catch(function (err) {
   log(error(err.message));
   process.exit(1);
 });
 
-// function extractZip (zip) {
-//   let tmpobj = tmp.dirSync();
-//   let dir = path.resolve(tmpobj.name, path.basename(zip, '.zip'));
-//   extract(zip, { dir }, (err) => {
-//     if (err) {
-//       log(error(err.message));
-//       process.exit(1);
-//     }
-//
-//     log(chalk.green('Downloaded and extracted.'));
-//     cleanupDir(dir);
-//   });
-// }
-//
 // function cleanupDir (dir) {
 //   log(chalk.blue('Cleaning things up...'));
 //

@@ -95,6 +95,8 @@ class Cleanup {
       filePath,
       albumPath
     ]);
+
+    return albumPath;
   }
 };
 
