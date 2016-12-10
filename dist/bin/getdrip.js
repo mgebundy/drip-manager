@@ -29,10 +29,6 @@ var _inquirer = require('inquirer');
 
 var _inquirer2 = _interopRequireDefault(_inquirer);
 
-var _scraper = require('../lib/scraper');
-
-var _scraper2 = _interopRequireDefault(_scraper);
-
 var _api = require('../lib/api');
 
 var _api2 = _interopRequireDefault(_api);
@@ -65,29 +61,31 @@ _commander2.default.version(_package2.default.version).usage('[options] <url,fil
 }).parse(process.argv);
 
 function Authentication() {
-  return new Promise(function (resolve, reject) {
-    _api2.default.getUser().then(function () {
-      resolve(true);
-    }, function () {
-      log('Let\'s log in to Drip.');
+  return _api2.default.getUser().catch(function () {
+    log('Let\'s log in to Drip.');
 
-      _inquirer2.default.prompt([{
-        name: 'email',
-        message: 'Email Address',
-        validate: function validate(input) {
-          var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-          return re.test(input);
-        }
-      }, { name: 'password', message: 'Password', type: 'password' }]).then(_api2.default.doAuth).then(resolve, reject);
+    return _inquirer2.default.prompt([{
+      name: 'email',
+      message: 'Email Address',
+      validate: function validate(input) {
+        var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        return re.test(input);
+      }
+    }, { name: 'password', message: 'Password', type: 'password' }]).then(_api2.default.doAuth).catch(function (err) {
+      log(error(err));
+      throw new Error('Unable to Authenticate');
     });
   });
 };
 
 function getRelease() {
+  if (typeof reqUrl === 'undefined') {
+    throw new Error('We need a url or file!');
+  }
+
   if (['http:', 'https:'].indexOf(_url2.default.parse(reqUrl).protocol) === -1 && _path2.default.extname(reqUrl) === '.zip') {
     log(_chalk2.default.blue('Already have a zip file. Extracting...'));
     return reqUrl;
-    // extractZip(reqUrl);
   } else if (_url2.default.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
     throw new Error('This URL isn\'t from drip.kickstarter.com');
   } else {
@@ -98,44 +96,42 @@ function getRelease() {
 
       data = data.data;
       log(_chalk2.default.blue('Snagging this release by ' + data.artist.trim() + ' for you...'));
-      return _api2.default.getReleaseDownload(data.creative_id, data.id, 'flac', function (bytes, total) {
+      var format = _config2.default.preferredFormats[0];
+
+      return _api2.default.getReleaseDownload(data.creative_id, data.id, format, function (bytes, total) {
         process.stdout.clearLine();
         process.stdout.write(_chalk2.default.blue('Downloading... ' + Math.ceil(bytes / total * 100) + '%'));
         process.stdout.cursorTo(0);
-      }).then(function () {
+      }).then(function (filePath) {
         process.stdout.write('\n');
+        log(_chalk2.default.green('Downloaded.'));
+        return filePath;
       });
     });
   }
 }
 
-Authentication().catch(function (err) {
-  log(error('Unable to Authenticate.'));
-  log(error(err));
-  process.exit(1);
-}).then(function (res) {
-  if (typeof reqUrl === 'undefined') {
-    throw new Error('We need a url or file!');
-  }
-}).then(getRelease)
-// .then(extractZip)
-.catch(function (err) {
+function extractZip(zip) {
+  return new Promise(function (resolve, reject) {
+    var tmpobj = _tmp2.default.dirSync();
+    var dir = _path2.default.resolve(tmpobj.name, _path2.default.basename(zip, '.zip'));
+    (0, _extractZip2.default)(zip, { dir: dir }, function (err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      log(_chalk2.default.green('Extracted.'));
+      // cleanupDir(dir);
+    });
+  });
+}
+
+Authentication().then(getRelease).then(extractZip).catch(function (err) {
   log(error(err.message));
   process.exit(1);
 });
 
-// function getZip (creativeId, id) {
-//   Scraper.getDripDownload(creativeId, id, (err, response) => {
-//     if (err) {
-//       log(error(err.message));
-//       process.exit(1);
-//     }
-//
-//     log(chalk.blue('Got the zip. Extracting...'));
-//     extractZip(response);
-//   });
-// }
-//
 // function extractZip (zip) {
 //   let tmpobj = tmp.dirSync();
 //   let dir = path.resolve(tmpobj.name, path.basename(zip, '.zip'));

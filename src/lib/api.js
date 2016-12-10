@@ -16,7 +16,11 @@ class API {
       'User-Agent': `DripManager/${pjson.version}`
     };
 
-    options.jar = this.getCookieJar();
+    try {
+      options.jar = this.getCookieJar();
+    } catch (e) {
+      options.jar = true;
+    }
 
     return options;
   }

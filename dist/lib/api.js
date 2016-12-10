@@ -57,7 +57,11 @@ var API = function () {
         'User-Agent': 'DripManager/' + _package2.default.version
       };
 
-      options.jar = this.getCookieJar();
+      try {
+        options.jar = this.getCookieJar();
+      } catch (e) {
+        options.jar = true;
+      }
 
       return options;
     }

@@ -29,38 +29,38 @@ commander
   .parse(process.argv);
 
 function Authentication () {
-  return new Promise(
-    function (resolve, reject) {
-      API.getUser().then(() => {
-        resolve(true);
-      }, () => {
-        log('Let\'s log in to Drip.');
+  return API.getUser().catch(() => {
+    log('Let\'s log in to Drip.');
 
-        inquirer
-        .prompt([
-          {
-            name: 'email',
-            message: 'Email Address',
-            validate (input) {
-              let re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-              return re.test(input);
-            }
-          },
-          { name: 'password', message: 'Password', type: 'password' }
-        ])
-        .then(API.doAuth)
-        .then(resolve, reject);
-      });
-    }
-  );
+    return inquirer
+    .prompt([
+      {
+        name: 'email',
+        message: 'Email Address',
+        validate (input) {
+          let re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+          return re.test(input);
+        }
+      },
+      { name: 'password', message: 'Password', type: 'password' }
+    ])
+    .then(API.doAuth)
+    .catch(err => {
+      log(error(err));
+      throw new Error('Unable to Authenticate');
+    });
+  });
 };
 
 function getRelease () {
+  if (typeof reqUrl === 'undefined') {
+    throw new Error('We need a url or file!');
+  }
+
   if (['http:', 'https:'].indexOf(url.parse(reqUrl).protocol) === -1 &&
     path.extname(reqUrl) === '.zip') {
     log(chalk.blue('Already have a zip file. Extracting...'));
     return reqUrl;
-    // extractZip(reqUrl);
   } else if (url.parse(reqUrl).hostname !== 'drip.kickstarter.com') {
     throw new Error('This URL isn\'t from drip.kickstarter.com');
   } else {
@@ -68,59 +68,52 @@ function getRelease () {
     return API.get(`/creatives${reqPath}`).then(({data, response}) => {
       data = data.data;
       log(chalk.blue(`Snagging this release by ${data.artist.trim()} for you...`));
-      return API.getReleaseDownload(data.creative_id, data.id, 'flac', (bytes, total) => {
+      let format = appCfg.preferredFormats[0];
+
+      return API.getReleaseDownload(data.creative_id, data.id, format, (bytes, total) => {
         process.stdout.clearLine();
         process.stdout.write(chalk.blue(`Downloading... ${Math.ceil(bytes / total * 100)}%`));
         process.stdout.cursorTo(0);
-      }).then(() => { process.stdout.write('\n'); });
+      }).then((filePath) => {
+        process.stdout.write('\n');
+        log(chalk.green('Downloaded.'));
+        return filePath;
+      });
     });
   }
 }
 
+function extractZip (zip) {
+  return new Promise(
+    function (resolve, reject) {
+      let tmpobj = tmp.dirSync();
+      let dir = path.resolve(tmpobj.name, path.basename(zip, '.zip'));
+      extract(zip, { dir }, (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        log(chalk.green('Extracted.'));
+        resolve(dir);
+      });
+    }
+  );
+}
+
+function cleanupDir (dir) {
+
+}
+
 Authentication()
-.catch(err => {
-  log(error('Unable to Authenticate.'));
-  log(error(err));
-  process.exit(1);
-})
-.then(res => {
-  if (typeof reqUrl === 'undefined') {
-    throw new Error('We need a url or file!');
-  }
-})
 .then(getRelease)
-// .then(extractZip)
+.then(extractZip)
+.then(cleanupDir)
 .catch(err => {
   log(error(err.message));
   process.exit(1);
 });
 
-// function getZip (creativeId, id) {
-//   Scraper.getDripDownload(creativeId, id, (err, response) => {
-//     if (err) {
-//       log(error(err.message));
-//       process.exit(1);
-//     }
-//
-//     log(chalk.blue('Got the zip. Extracting...'));
-//     extractZip(response);
-//   });
-// }
-//
-// function extractZip (zip) {
-//   let tmpobj = tmp.dirSync();
-//   let dir = path.resolve(tmpobj.name, path.basename(zip, '.zip'));
-//   extract(zip, { dir }, (err) => {
-//     if (err) {
-//       log(error(err.message));
-//       process.exit(1);
-//     }
-//
-//     log(chalk.green('Downloaded and extracted.'));
-//     cleanupDir(dir);
-//   });
-// }
-//
 // function cleanupDir (dir) {
 //   log(chalk.blue('Cleaning things up...'));
 //
