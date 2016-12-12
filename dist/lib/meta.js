@@ -8,9 +8,25 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _child_process = require('child_process');
 
+var _musicmetadata = require('musicmetadata');
+
+var _musicmetadata2 = _interopRequireDefault(_musicmetadata);
+
+var _fs = require('fs');
+
+var _fs2 = _interopRequireDefault(_fs);
+
+var _path = require('path');
+
+var _path2 = _interopRequireDefault(_path);
+
 var _avprobe = require('./avprobe');
 
 var _avprobe2 = _interopRequireDefault(_avprobe);
+
+var _utils = require('./utils');
+
+var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -22,6 +38,18 @@ var Meta = function () {
   }
 
   _createClass(Meta, null, [{
+    key: 'getMetadata',
+    value: function getMetadata(file) {
+      return new Promise(function (resolve, reject) {
+        var stream = _fs2.default.createReadStream(file);
+        (0, _musicmetadata2.default)(stream, function (err, metadata) {
+          if (err) reject({ err: err, file: file });
+          resolve(metadata);
+          stream.close();
+        });
+      });
+    }
+  }, {
     key: 'getGlobalBitDepth',
     value: function getGlobalBitDepth(files) {
       var bitdepth = 0;
@@ -33,10 +61,9 @@ var Meta = function () {
         for (var _iterator = files[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
           var file = _step.value;
 
-          var meta = (0, _avprobe2.default)(file);
-          var format = meta.format.format_name;
+          var ext = _path2.default.extname(file);
 
-          if (format === 'flac') {
+          if (ext === '.flac') {
             var bd = (0, _child_process.execSync)('metaflac --show-bps "' + file + '"', {
               encoding: 'utf8'
             });
@@ -66,6 +93,8 @@ var Meta = function () {
   }, {
     key: 'getGlobalDate',
     value: function getGlobalDate(files) {
+      var promises = [];
+
       var _iteratorNormalCompletion2 = true;
       var _didIteratorError2 = false;
       var _iteratorError2 = undefined;
@@ -74,12 +103,8 @@ var Meta = function () {
         for (var _iterator2 = files[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
           var file = _step2.value;
 
-          var meta = (0, _avprobe2.default)(file);
-
-          var tags = meta.format.tags;
-          if (tags && tags.DATE) {
-            return tags.DATE;
-          }
+          var p = Meta.getMetadata(file);
+          promises.push(p);
         }
       } catch (err) {
         _didIteratorError2 = true;
@@ -95,10 +120,16 @@ var Meta = function () {
           }
         }
       }
+
+      return _utils2.default.oneSuccess(promises).then(function (metadata) {
+        return metadata.year;
+      });
     }
   }, {
     key: 'getAlbumArtist',
     value: function getAlbumArtist(files) {
+      var promises = [];
+
       var _iteratorNormalCompletion3 = true;
       var _didIteratorError3 = false;
       var _iteratorError3 = undefined;
@@ -107,14 +138,16 @@ var Meta = function () {
         for (var _iterator3 = files[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
           var file = _step3.value;
 
-          var meta = (0, _avprobe2.default)(file);
-
-          var tags = meta.format.tags;
-          if (tags && tags.album_artist) {
-            return tags.album_artist;
-          } else if (tags && tags.ARTIST) {
-            return tags.ARTIST;
-          }
+          var p = Meta.getMetadata(file).then(function (metadata) {
+            if (metadata.albumartist.length > 0) {
+              return metadata.albumartist.join(', ');
+            } else if (metadata.artist.length > 0) {
+              return metadata.artist.join(', ');
+            } else {
+              throw new Error('No Album Artist or Artist field');
+            }
+          });
+          promises.push(p);
         }
       } catch (err) {
         _didIteratorError3 = true;
@@ -131,7 +164,9 @@ var Meta = function () {
         }
       }
 
-      return 'Unknown Artist';
+      return _utils2.default.oneSuccess(promises).catch(function () {
+        return 'Unknown Artist';
+      });
     }
   }]);
 

@@ -101,33 +101,31 @@ function extractZip (zip) {
   );
 }
 
-function cleanupDir (dir) {
+function cleanupDir (newPath) {
   log(chalk.blue('Cleaning things up...'));
-
-  let newPath = dir;
-  if (appCfg.dependencies.avprobe) {
-    newPath = Cleanup.audioFolder(dir);
-  } else {
-    log(chalk.yellow('Can\'t find avprobe, so no files can be cleaned up.'));
-  }
   log(chalk.green(path.basename(newPath)));
 
   let files = Utils.walkDir(newPath);
+  let promises = [];
+
   for (let file of files) {
-    try {
-      let audioFile = Cleanup.audioFile(file);
+    let p = Cleanup.track(file).then(audioFile => {
       log(chalk.green(` - ${path.basename(audioFile)}`));
-    } catch (e) {
+      return audioFile;
+    }, ({ e, file }) => {
       log(chalk.blue(` - ${path.basename(file)}`));
-    }
+      return file;
+    });
+    promises.push(p);
   }
 
-  return newPath;
+  return Promise.all(promises).then(() => newPath);
 }
 
 Authentication()
 .then(getRelease)
 .then(extractZip)
+.then(Cleanup.album)
 .then(cleanupDir)
 .then(Cleanup.addToPath)
 .then(() => {

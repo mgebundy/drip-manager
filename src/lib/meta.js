@@ -1,15 +1,30 @@
 import { execSync } from 'child_process';
+import mm from 'musicmetadata';
+import fs from 'fs';
+import path from 'path';
 
-import avprobe from './avprobe';
+import Utils from './utils';
 
 class Meta {
+  static getMetadata (file) {
+    return new Promise(
+      function (resolve, reject) {
+        let stream = fs.createReadStream(file);
+        mm(stream, function (err, metadata) {
+          if (err) reject({err, file});
+          resolve(metadata);
+          stream.close();
+        });
+      }
+    );
+  }
+
   static getGlobalBitDepth (files) {
     let bitdepth = 0;
     for (let file of files) {
-      let meta = avprobe(file);
-      let format = meta.format.format_name;
+      let ext = path.extname(file);
 
-      if (format === 'flac') {
+      if (ext === '.flac') {
         let bd = execSync(`metaflac --show-bps "${file}"`, {
           encoding: 'utf8'
         });
@@ -24,29 +39,33 @@ class Meta {
   }
 
   static getGlobalDate (files) {
-    for (let file of files) {
-      let meta = avprobe(file);
+    let promises = [];
 
-      let tags = meta.format.tags;
-      if (tags && tags.DATE) {
-        return tags.DATE;
-      }
+    for (let file of files) {
+      let p = Meta.getMetadata(file);
+      promises.push(p);
     }
+
+    return Utils.oneSuccess(promises).then(metadata => metadata.year);
   }
 
   static getAlbumArtist (files) {
-    for (let file of files) {
-      let meta = avprobe(file);
+    let promises = [];
 
-      let tags = meta.format.tags;
-      if (tags && tags.album_artist) {
-        return tags.album_artist;
-      } else if (tags && tags.ARTIST) {
-        return tags.ARTIST;
-      }
+    for (let file of files) {
+      let p = Meta.getMetadata(file).then(metadata => {
+        if (metadata.albumartist.length > 0) {
+          return metadata.albumartist.join(', ');
+        } else if (metadata.artist.length > 0) {
+          return metadata.artist.join(', ');
+        } else {
+          throw new Error('No Album Artist or Artist field');
+        }
+      });
+      promises.push(p);
     }
 
-    return 'Unknown Artist';
+    return Utils.oneSuccess(promises).catch(() => 'Unknown Artist');
   }
 };
 
