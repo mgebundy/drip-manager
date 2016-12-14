@@ -127,18 +127,13 @@ function extractZip(zip) {
   });
 }
 
-function cleanupDir(dir) {
+function cleanupDir(newPath) {
   log(_chalk2.default.blue('Cleaning things up...'));
-
-  var newPath = dir;
-  if (_config2.default.dependencies.avprobe) {
-    newPath = _cleanup2.default.audioFolder(dir);
-  } else {
-    log(_chalk2.default.yellow('Can\'t find avprobe, so no files can be cleaned up.'));
-  }
   log(_chalk2.default.green(_path2.default.basename(newPath)));
 
   var files = _utils2.default.walkDir(newPath);
+  var promises = [];
+
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -147,12 +142,17 @@ function cleanupDir(dir) {
     for (var _iterator = files[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
       var file = _step.value;
 
-      try {
-        var audioFile = _cleanup2.default.audioFile(file);
+      var p = _cleanup2.default.track(file).then(function (audioFile) {
         log(_chalk2.default.green(' - ' + _path2.default.basename(audioFile)));
-      } catch (e) {
+        return audioFile;
+      }, function (_ref2) {
+        var e = _ref2.e,
+            file = _ref2.file;
+
         log(_chalk2.default.blue(' - ' + _path2.default.basename(file)));
-      }
+        return file;
+      });
+      promises.push(p);
     }
   } catch (err) {
     _didIteratorError = true;
@@ -169,10 +169,12 @@ function cleanupDir(dir) {
     }
   }
 
-  return newPath;
+  return Promise.all(promises).then(function () {
+    return newPath;
+  });
 }
 
-Authentication().then(getRelease).then(extractZip).then(cleanupDir).then(_cleanup2.default.addToPath).then(function () {
+Authentication().then(getRelease).then(extractZip).then(_cleanup2.default.album).then(cleanupDir).then(_cleanup2.default.addToPath).then(function () {
   log(_chalk2.default.green('Done.'));
 }).catch(function (err) {
   log(error(err.message));

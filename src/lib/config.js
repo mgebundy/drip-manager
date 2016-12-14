@@ -31,7 +31,7 @@ let appCfg = rc('drip-manager', {
   musicFolder: path.join(userHome, 'Music'),
   preferredFormats: ['flac', 'wav'],
   templates: {
-    track: '${track} ${artist} - ${title}.${format}'
+    track: '${track} ${artist} - ${title}'
   },
   timeout: 30 * 1000
 }, null);
@@ -39,7 +39,6 @@ let appCfg = rc('drip-manager', {
 appCfg.dependencies = {};
 
 let checkDependencies = {
-  avprobe: ['-version'],
   metaflac: ['--version']
 };
 

@@ -78,6 +78,28 @@ var Utils = function () {
 
       return this[key];
     }
+  }, {
+    key: 'oneSuccess',
+    value: function oneSuccess(promises) {
+      return Promise.all(promises.map(function (p) {
+        // If a request fails, count that as a resolution so it will keep
+        // waiting for other possible successes. If a request succeeds,
+        // treat it as a rejection so Promise.all immediately bails out.
+        return p.then(function (val) {
+          return Promise.reject(val);
+        }, function (err) {
+          return Promise.resolve(err);
+        });
+      })).then(
+      // If '.all' resolved, we've just got an array of errors.
+      function (errors) {
+        return Promise.reject(errors);
+      },
+      // If '.all' rejected, we've got the result we wanted.
+      function (val) {
+        return Promise.resolve(val);
+      });
+    }
   }]);
 
   return Utils;
