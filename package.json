@@ -1,6 +1,6 @@
 {
   "name": "drip-manager",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Download your Drip releases via command line",
   "keywords": [
     "drip",
