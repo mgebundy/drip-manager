@@ -1,7 +1,8 @@
-import { execSync } from 'child_process';
-import mm from 'musicmetadata';
+import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
+import mm from 'musicmetadata';
+import flac from 'flac-metadata';
 
 import Utils from './utils';
 
@@ -19,23 +20,45 @@ class Meta {
     );
   }
 
+  static getFlacStreamInfo (file) {
+    return new Promise(
+      function (resolve, reject) {
+        let reader = fs.createReadStream(file);
+        let processor = new flac.Processor({ parseMetaDataBlocks: true });
+        let data = {};
+
+        processor.on('postprocess', mdb => {
+          if (mdb.type === flac.Processor.MDB_TYPE_STREAMINFO) {
+            mdb.isLast = true;
+            for (let line of mdb.toString().split('\n')) {
+              line = /^([A-Z0-9]*): (.*)/i.exec(line.trim());
+              if (line) {
+                data[line[1]] = line[2];
+              }
+            }
+            resolve(data);
+          }
+          reader.close();
+        });
+
+        reader.pipe(processor);
+      }
+    );
+  }
+
   static getGlobalBitDepth (files) {
-    let bitdepth = 0;
+    let promises = [];
+
     for (let file of files) {
       let ext = path.extname(file);
 
       if (ext === '.flac') {
-        let bd = execSync(`metaflac --show-bps "${file}"`, {
-          encoding: 'utf8'
-        });
-
-        if (bd > bitdepth) {
-          bitdepth = bd;
-        }
+        let p = this.getFlacStreamInfo(file).then(metadata => parseInt(metadata.bitsPerSample));
+        promises.push(p);
       }
     }
 
-    return bitdepth;
+    return Promise.all(promises).then(values => _.max(values));
   }
 
   static getGlobalDate (files) {

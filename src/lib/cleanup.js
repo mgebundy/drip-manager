@@ -5,7 +5,6 @@ import path from 'path';
 import chalk from 'chalk';
 import { spawn } from 'child_process';
 
-// import avprobe from './avprobe';
 import Utils from './utils';
 import Meta from './meta';
 import appCfg from './config';
@@ -35,20 +34,24 @@ class Cleanup {
   static album (dir) {
     let files = Utils.walkDir(dir);
 
-    return Meta.getGlobalDate(files).then(date => {
+    return Meta
+    .getGlobalDate(files)
+    .then(date => {
       // @TODO audio folder template
-      let append = ` (${date})`;
+      return ` (${date})`;
+    })
+    .then(append => {
+      return Meta.getGlobalBitDepth(files).then(bitdepth => {
+        if (bitdepth) {
+          append += ` [FLAC-${bitdepth}]`;
+        } else {
+          append += ' [FLAC]';
+        }
 
-      let bitdepth = null;
-      if (appCfg.dependencies.metaflac) {
-        bitdepth = Meta.getGlobalBitDepth(files);
-      }
-      if (bitdepth) {
-        append += ` [FLAC-${sanitize(bitdepth)}]`;
-      } else {
-        append += ' [FLAC]';
-      }
-
+        return append;
+      });
+    })
+    .then(append => {
       if (path.basename(dir).lastIndexOf(append) !== -1 &&
         path.basename(dir).lastIndexOf(append) === path.basename(dir).length - append.length) {
         return dir;

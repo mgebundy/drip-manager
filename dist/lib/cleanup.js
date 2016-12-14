@@ -81,18 +81,20 @@ var Cleanup = function () {
 
       return _meta2.default.getGlobalDate(files).then(function (date) {
         // @TODO audio folder template
-        var append = ' (' + date + ')';
+        return ' (' + date + ')';
+      }).then(function (append) {
+        return _meta2.default.getGlobalBitDepth(files).then(function (bitdepth) {
+          if (bitdepth) {
+            append += ' [FLAC-' + bitdepth + ']';
+          } else {
+            append += ' [FLAC]';
+          }
 
-        var bitdepth = null;
-        if (_config2.default.dependencies.metaflac) {
-          bitdepth = _meta2.default.getGlobalBitDepth(files);
-        }
-        if (bitdepth) {
-          append += ' [FLAC-' + (0, _sanitizeFilename2.default)(bitdepth) + ']';
-        } else {
-          append += ' [FLAC]';
-        }
+          console.log(append);
 
+          return append;
+        });
+      }).then(function (append) {
         if (_path2.default.basename(dir).lastIndexOf(append) !== -1 && _path2.default.basename(dir).lastIndexOf(append) === _path2.default.basename(dir).length - append.length) {
           return dir;
         }

@@ -4,11 +4,7 @@
 ** Does not run 100% on Windows currently **
 
 ## Install
-```console
-$ npm install -g drip-manager
-```
-It depends on `avprobe` to really reach its full potential. Download `libav` [here](https://libav.org/download/).
-Also optionally `metaflac` to get certain flac file metadata.
+[![NPM](https://nodei.co/npm/drip-manager.png)](https://nodei.co/npm/drip-manager/)
 
 ## Configuration
 In your home directory create a `config` file in `.config/drip-manager`, this is to customize other options such as the folder your music syncs to. Here are the defaults...

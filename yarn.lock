@@ -1114,6 +1114,10 @@ fill-range@^2.1.0:
     repeat-element "^1.1.2"
     repeat-string "^1.5.2"
 
+flac-metadata:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/flac-metadata/-/flac-metadata-0.1.1.tgz#c02f8a06d24bd5b69de2b85512c6e45bd8f9176c"
+
 flat-cache@^1.2.1:
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/flat-cache/-/flat-cache-1.2.1.tgz#6c837d6225a7de5659323740b36d5361f71691ff"
