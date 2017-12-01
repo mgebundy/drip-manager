@@ -1,6 +1,9 @@
 # Drip Manager
 > Download your Drip releases via a nice command line tool
 
+## RIP DRIP
+Because of Drip moving away from Music labels, this likely won't be updated. If there are more music labels participating in the new syste I'll consider updating this.
+
 ** Does not run 100% on Windows currently **
 
 ## Install
